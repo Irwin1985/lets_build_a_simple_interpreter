@@ -1,5 +1,3 @@
-# Proyecto 'Let's build a simple interpreter'
-
 # Token types
 #
 # EOF (end-of-file) token is used to indicate that
@@ -167,3 +165,37 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+"""
+Check your understanding
+
+**DISCLAIMER**
+    I answer all in English but keep in mind I'm not a native English speaker thus there will be 
+    grammars and semantics errors (that's funny because I'm learning formal language grammar)
+
+1. What is an interpreter?
+    A interpreter is a piece of software that takes an input written in some high level language (source program)
+    and execute them one by one.
+2. What is a compiler?
+    A compiler is a piece of software that takes an input written in some high level language (source program)
+    and translates it into an equivalent low level program (target program) for later execution.
+
+3. What’s the difference between an interpreter and a compiler?
+    An interpreter executes the source program sentence by sentence while a compiler translates the source program
+    into another program commonly a low level program.
+
+4. What is a token?
+    A token is a related unit that represents an atom from the alphabet of certain language. It take at least two
+    piece of information (attributes):
+    1. a type representing the category of the related atom.
+    2. a value commonly called `lexeme` that represent the symbol or word related to it.
+
+5. What is the name of the process that breaks input apart into tokens?
+    Tokenization
+
+6. What is the part of the interpreter that does lexical analysis called?
+    Lexical Analizer
+
+7. What are the other common names for that part of an interpreter or a compiler?
+    Tokenizer, Scanner, Lexer
+"""
