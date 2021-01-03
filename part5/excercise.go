@@ -26,7 +26,7 @@ const (
 	// MUL representa la multiplicación de enteros.
 	MUL = "MUL"
 	// DIV representa la división de enteros.
-	DIV = "DIVIDE"
+	DIV = "DIV"
 	// EOF representa un token vacío.
 	EOF = "EOF"
 	// LPAREN abre agrupador.
@@ -167,7 +167,7 @@ func (i *Interpreter) Eat(tokenType TokenType) {
 
 // Error de sintaxis
 func (i *Interpreter) Error() {
-	fmt.Println("Error de sintaxis.")
+	fmt.Printf("Error de sintaxis: %v\n", i.currentToken)
 	os.Exit(1)
 }
 
@@ -200,13 +200,8 @@ func (i *Interpreter) Term() int {
 			result *= i.Factor()
 		}
 		if sType == DIV {
-			divisor := i.Factor()
 			i.Eat(DIV)
-			if divisor == 0 {
-				fmt.Println("division by zero.")
-				os.Exit(1)
-			}
-			result /= divisor
+			result /= i.Factor()
 		}
 	}
 	return result
