@@ -18,7 +18,8 @@ class Lexer(object):
         # keyword dictionary
         self.keywords = {
             'BEGIN': Token(BEGIN, 'BEGIN'),
-            'END': Token(END, 'END')
+            'END': Token(END, 'END'),
+            'DIV': Token(DIV, 'DIV')
         }
     
     def error(self):
@@ -51,10 +52,10 @@ class Lexer(object):
     
     def _id(self):
         result = ''
-        while self.current_char != None and self.current_char.isalnum():
+        while self.current_char != None and (self.current_char.isalnum() or self.current_char == '_'):
             result += self.current_char
             self.advance()
-        token = self.keywords.get(result, Token(ID, result))
+        token = self.keywords.get(result.upper(), Token(ID, result))
         return token
     
     def get_next_token(self):
@@ -66,7 +67,7 @@ class Lexer(object):
             if self.current_char.isdigit():
                 return Token(INTEGER, self.integer())
             
-            if self.current_char.isalpha():
+            if self.current_char.isalpha() or self.current_char == '_':
                 return self._id()
             
             if self.current_char == '(':
@@ -382,19 +383,22 @@ class Interpreter(NodeVisitor):
 
 def main():
     import sys
-    text = open(sys.argv[1], 'r').read()
+    text = ""
+    if len(sys.argv) > 1:
+        text = open(sys.argv[1], 'r').read()
+    
     if len(text) <= 0:
         # sample code.
         text = """\
-            BEGIN
-                BEGIN
-                    number := 2;
-                    a := number;
-                    b := 10 * a + 10 * number / 4;
+            begin
+                BeGIn
+                    _number_ := 2;
+                    a := _number_;
+                    b := 10 * a + 10 * _number_ / 4;
                     c := a - - b
-                END;
+                End;
                 x := 11;
-            END.
+            end.
         """
 
     lexer = Lexer(text)
