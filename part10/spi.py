@@ -292,7 +292,7 @@ class Parser(object):
         self.eat(COLON)
         type_node = self.type_spec()
         var_declarations = [
-            VarDecl(var_nodes, type_node)
+            VarDecl(var_node, type_node)
             for var_node in var_nodes
         ]
         return var_declarations
