@@ -174,7 +174,7 @@ class Lexer(object):
         return Token(EOF, None)
 ###############################################################################
 #                                                                             #
-#  PARSER                                                                     #
+#  AST                                                                        #
 #                                                                             #
 ###############################################################################  
 class AST(object):
@@ -189,11 +189,12 @@ class Block(AST):
     def __init__(self, declarations, compound_statement):
         self.declarations = declarations
         self.compound_statement = compound_statement
-
+#>declarations
 class VarDecl(AST):
     def __init__(self, var_node, type_node):
         self.var_node = var_node
         self.type_node = type_node
+#>declarations
 
 class Type(AST):
     def __init__(self, token):
@@ -227,14 +228,18 @@ class Assign(AST):
         self.token = self.op = op # what is this for?
         self.right = right # expression
 
-class Var(AST):
+class Var(AST): # Var => Identifier
     def __init__(self, token):
         self.token = token
         self.value = token.value
 
 class NoOp(AST):
     pass
-
+###############################################################################
+#                                                                             #
+#  PARSER                                                                     #
+#                                                                             #
+###############################################################################  
 class Parser(object):
     def __init__(self, lexer):
         self.lexer = lexer
