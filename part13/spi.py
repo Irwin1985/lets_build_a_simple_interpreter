@@ -1,4 +1,4 @@
-""" SPI - Simple Pascal Interpreter. Part 11."""
+""" SPI - Simple Pascal Interpreter. Part 13. """
 
 ###############################################################################
 #                                                                             #
@@ -29,9 +29,9 @@ SEMI          = 'SEMI'
 DOT           = 'DOT'
 PROGRAM       = 'PROGRAM'
 VAR           = 'VAR'
-PROCEDURE     = 'PROCEDURE'
 COLON         = 'COLON'
 COMMA         = 'COMMA'
+PROCEDURE     = 'PROCEDURE'
 EOF           = 'EOF'
 
 
@@ -59,12 +59,12 @@ class Token(object):
 RESERVED_KEYWORDS = {
     'PROGRAM': Token('PROGRAM', 'PROGRAM'),
     'VAR': Token('VAR', 'VAR'),
-    'PROCEDURE': Token('PROCEDURE', 'PROCEDURE'),
     'DIV': Token('INTEGER_DIV', 'DIV'),
     'INTEGER': Token('INTEGER', 'INTEGER'),
     'REAL': Token('REAL', 'REAL'),
     'BEGIN': Token('BEGIN', 'BEGIN'),
     'END': Token('END', 'END'),
+    'PROCEDURE': Token('PROCEDURE', 'PROCEDURE'),
 }
 
 class Lexer(object):
@@ -206,6 +206,7 @@ class Lexer(object):
             self.error()
 
         return Token(EOF, None)
+
 ###############################################################################
 #                                                                             #
 #  AST                                                                        #
@@ -230,9 +231,9 @@ class VarDecl(AST):
         self.type_node = type_node
 
 class ProcedureDecl(AST):
-    def __init__(self, proc_name, block_node):
-        self.name = proc_name
-        self.block = block_node
+    def __init__(self, name, block):
+        self.name = name
+        self.block = block
 
 class Type(AST):
     def __init__(self, token):
@@ -249,23 +250,23 @@ class Assign(AST):
         self.token = self.op = op
         self.right = right
 
+class Var(AST):
+    def __init__(self, token):
+        self.token = token
+        self.value = token.value
+
 class BinOp(AST):
     def __init__(self, left, op, right):
         self.left = left
         self.token = self.op = op
         self.right = right
-        
+
 class UnaryOp(AST):
     def __init__(self, op, expr):
         self.token = self.op = op
         self.expr = expr
 
 class Num(AST):
-    def __init__(self, token):
-        self.token = token
-        self.value = token.value
-
-class Var(AST):
     def __init__(self, token):
         self.token = token
         self.value = token.value
@@ -470,10 +471,10 @@ class Parser:
         return tree
 ###############################################################################
 #                                                                             #
-#  SYMBOL TABLE                                                               #
+#  SYMBOLS, TABLES, SEMANTIC ANALYSIS                                         #
 #                                                                             #
 ###############################################################################
-class Symbol:
+class Symbol(object):
     def __init__(self, name, type = None):
         self.name = name
         self.type = type
@@ -481,130 +482,73 @@ class Symbol:
 class BuiltinTypeSymbol(Symbol):
     def __init__(self, name):
         super().__init__(name)
+    
     def __str__(self):
         return self.name
-    __repr__ = __str__
+    
+    def __repr__(self):
+        return "<{class_name}(name='{name}')>".format(
+            class_name = self.__class__.__name__,
+            name = self.name
+        )
 
 class VarSymbol(Symbol):
     def __init__(self, name, type):
         super().__init__(name, type)
+    
     def __str__(self):
-        return '<{name}:{type}'.format(name=self.name, type=self.type)
+        return "<{class_name}(name='{name}','type={type}')>".format(
+            class_name = self.__class__.__name__,
+            name = self.name,
+            type = self.type
+        )
     __repr__ = __str__
 
 class SymbolTable:
     def __init__(self):
-        self._symbol = {}
+        self._symbols = {}
         self._init_builtins()
-
+    
     def _init_builtins(self):
-        self.define(BuiltinTypeSymbol('INTEGER'))
-        self.define(BuiltinTypeSymbol('REAL'))
-
+        self.insert(BuiltinTypeSymbol('INTEGER'))
+        self.insert(BuiltinTypeSymbol('REAL'))
+    
     def __str__(self):
-        s = 'Symbols: {symbols}'.format(
-            symbols=[value for value in self._symbol.values()]
+        symtab_header = 'Symbol table contents'
+        lines = ['\n', symtab_header, '_' * len(symtab_header)]
+        lines.extend(
+            ('%7s: %r' % (key, value))
+            for key, value in self._symbols.items()
         )
+        lines.append('\n')
+        s = '\n'.join(lines)
         return s
+    
     __repr__ = __str__
-
-    def define(self, symbol):
-        print('Define: %s' % symbol)
-        self._symbol[symbol.name] = symbol
+    
+    def insert(self, symbol):
+        print('Insert: %s' % symbol.name)
+        self._symbols[symbol.name] = symbol
 
     def lookup(self, name):
         print('Lookup: %s' % name)
-        symbol = self._symbol.get(name)
-        # symbol es una instancia de la clase `Symbol` o None.
+        symbol = self._symbols.get(name)
         return symbol
-###############################################################################
-#                                                                             #
-#  ABSTRACT VISITOR                                                           #
-#                                                                             #
-###############################################################################
+
 class NodeVisitor:
     def visit(self, node):
         method_name = 'visit_' + type(node).__name__
         visitor = getattr(self, method_name, self.generic_visit)
         return visitor(node)
-
     def generic_visit(self, node):
         raise Exception('No visit_{} method'.format(type(node).__name__))
 
-
 ###############################################################################
 #                                                                             #
-#  INTERPRETER                                                                #
+#  CHEQUEO SEMANTICO                                                          #
 #                                                                             #
 ###############################################################################
-class Interpreter(NodeVisitor):
-    def __init__(self, tree):
-        self.tree = tree
-        self.GLOBAL_MEMORY = {}
-
-    def visit_Program(self, node):
-        self.visit(node.block)
-
-    def visit_Block(self, node):
-        for declaration in node.declarations:
-            self.visit(declaration)
-        self.visit(node.compound_statement)
-
-    def visit_Compound(self, node):
-        for statement in node.children:
-            self.visit(statement)
-
-    def visit_BinOp(self, node):
-        if node.op.type == PLUS:
-            return self.visit(node.left) + self.visit(node.right)
-        elif node.op.type == MINUS:
-            return self.visit(node.left) - self.visit(node.right)
-        elif node.op.type == MUL:
-            return self.visit(node.left) * self.visit(node.right)
-        elif node.op.type == INTEGER_DIV:
-            return self.visit(node.left) // self.visit(node.right)
-        elif node.op.type == FLOAT_DIV:
-            return float(self.visit(node.left)) / float(self.visit(node.right))
-
-    def visit_Num(self, node):
-        return node.value
-
-    def visit_UnaryOp(self, node):
-        if node.op.type == PLUS:
-            return self.visit(node.expr) * 1
-        elif node.op.type == MINUS:
-            return self.visit(node.expr) * -1
-
-    def visit_VarDecl(self, node):
-        pass
-    def visit_ProcedureDecl(self, node):
-        pass
-    def visit_Assign(self, node):
-        var_name = node.left.value
-        var_value = self.visit(node.right)
-        self.GLOBAL_MEMORY[var_name] = var_value
-
-    def visit_Var(self, node):
-        var_name = node.value
-        var_value = self.GLOBAL_MEMORY.get(var_name)
-        return var_value
-
-    def visit_NoOp(self, node):
-        pass
-    def visit_Type(self, node):
-        pass
-
-    def interpret(self):
-        tree = self.tree
-        if tree is None:
-            return ''
-        return self.visit(tree)
-###############################################################################
-#                                                                             #
-#  SYMBOL TABLE BUILDER                                                       #
-#                                                                             #
-###############################################################################
-class SymbolTableBuilder(NodeVisitor):
+class SemanticAnalizer(NodeVisitor):
     def __init__(self):
         self.symtab = SymbolTable()
 
@@ -617,68 +561,36 @@ class SymbolTableBuilder(NodeVisitor):
         self.visit(node.compound_statement)
 
     def visit_Compound(self, node):
-        for statement in node.children:
-            self.visit(statement)
+        for child in node.children:
+            self.visit(child)
 
-    def visit_VarDecl(self, node):
+    def visit_VarDecl(self, node):        
         type_name = node.type_node.value
         type_symbol = self.symtab.lookup(type_name)
+
         var_name = node.var_node.value
+        if self.symtab.lookup(var_name) is not None:
+            raise Exception(
+                "Error: Duplicated identifier '%s' found" % var_name
+            )
         var_symbol = VarSymbol(var_name, type_symbol)
-        self.symtab.define(var_symbol)
-
-    def visit_ProcedureDecl(self, node):
-        self.visit(node.block)
-
-    def visit_Assign(self, node):
-        var_name = node.left.value
-        var_symbol = self.symtab.lookup(var_name)
-        if var_symbol is None:
-            raise NameError(repr(var_name))
-        self.visit(node.right)
+        self.symtab.insert(var_symbol)
 
     def visit_Var(self, node):
         var_name = node.value
         var_symbol = self.symtab.lookup(var_name)
         if var_symbol is None:
-            raise NameError(repr(var_name))
+            raise Exception(
+                "Error: Symbol(identifier) not found '%s'" % var_name
+            )
+
+    def visit_Assign(self, node):
+        self.visit(node.right)
+        self.visit(node.left)
 
     def visit_BinOp(self, node):
         self.visit(node.left)
         self.visit(node.right)
 
-    def visit_UnaryOp(self, node):
-        self.visit(node.expr)
-    
-    def visit_Num(self, node):
-        pass
     def visit_NoOp(self, node):
         pass
-    def visit_Type(self, node):
-        pass
-
-###############################################################################
-#                                                                             #
-#  MAIN                                                                       #
-#                                                                             #
-###############################################################################
-def main():
-    text = open('part12/part12.pas', 'r').read()
-    lexer = Lexer(text)
-    parser = Parser(lexer)
-    tree = parser.parse()
-    symtab_builder = SymbolTableBuilder()
-    symtab_builder.visit(tree)
-    print('')
-    print('Symbol Table contents:')
-    print(symtab_builder.symtab)
-    interpreter = Interpreter(tree)
-    result = interpreter.interpret()
-
-    print('')
-    print('Run-time GLOBAL_MEMORY contents:')
-    for k, v in sorted(interpreter.GLOBAL_MEMORY.items()):
-        print('{} = {}'.format(k, v))
-
-if __name__ == '__main__':
-    main()
