@@ -10,6 +10,9 @@
 #
 # EOF (end-of-file) token is used to indicate that
 # there is no more input left for lexical analysis
+from typing import OrderedDict
+
+
 INTEGER       = 'INTEGER'
 REAL          = 'REAL'
 INTEGER_CONST = 'INTEGER_CONST'
@@ -551,12 +554,17 @@ class ProcedureSymbol(Symbol):
         )
     __repr__ = __str__
 
+#########################################################################################
+#
+# ScopedSymbolTable
+#
+#########################################################################################
 class ScopedSymbolTable:
-    def __init__(self, scope_name, scope_level):
-        self._symbols = {}
-        self.current_scope_name = scope_name
-        self.current_scope_level = scope_level
-        self._init_builtins()
+    def __init__(self, scope_name, scope_level, enclosing_scope = None):
+        self._symbols = OrderedDict()
+        self.scope_name = scope_name
+        self.scope_level = scope_level
+        self.enclosing_scope = enclosing_scope
     
     def _init_builtins(self):
         self.insert(BuiltinTypeSymbol('INTEGER'))
@@ -566,8 +574,11 @@ class ScopedSymbolTable:
         h1 = 'SCOPE (SCOPED SYMBOL TABLE)'
         lines = ['\n', h1, '=' * len(h1)]
         for header_name, header_value in (
-            ('Scope name', self.current_scope_name),
-            ('Scope level', self.current_scope_level),
+            ('Scope name', self.scope_name),
+            ('Scope level', self.scope_level),
+            ('Enclosing scope',
+            self.enclosing_scope.scope_name if self.enclosing_scope else None
+            )
         ):
             lines.append('%-15s: %s' % (header_name, header_value))
         h2 = 'Scope (Scoped symbol table) contents'
@@ -587,9 +598,16 @@ class ScopedSymbolTable:
         self._symbols[symbol.name] = symbol
 
     def lookup(self, name):
-        print('Lookup: %s' % name)
+        print('Lookup: %s. (Scope name: %s)' % (name, self.scope_name))
+        # 'symbol' is either an instance of the Symbol class or None
         symbol = self._symbols.get(name)
-        return symbol
+        
+        if symbol is not None:
+            return symbol
+        
+        # recursivamente va hacia arriba en la cadena buscando el nombre.
+        if self.enclosing_scope is not None:
+            return self.enclosing_scope.lookup(name)
 
 ###############################################################################
 #                                                                             #
@@ -601,17 +619,25 @@ class SemanticAnalizer(NodeVisitor):
         self.current_scope = None
 
     def visit_Program(self, node):
+        # 1. Crear el nuevo ámbito (ScopedSymbolTable)
+        # 2. Guardar referencia al ámbito anterior (Nada)
+        # 3. Asignar el nuevo ámbito a la variable 'current_scope'
+        # 4. Visitar el bloque del Program.
+        # 5. Restaurar la referencia al ámbito anterior (Nada)
         print('ENTER scope:global')
         global_scope = ScopedSymbolTable(
             scope_name='global',
-            scope_level=1
+            scope_level=1,
+            enclosing_scope=self.current_scope, # None porque es el program.
         )
+        global_scope._init_builtins() # aquí se inician los built-ins.
         self.current_scope = global_scope
 
         # visit subtree
         self.visit(node.block)
 
         print(global_scope)
+        self.current_scope = self.current_scope.enclosing_scope
         print('LEAVE scope: global')
 
     def visit_Block(self, node):
@@ -632,15 +658,26 @@ class SemanticAnalizer(NodeVisitor):
         self.current_scope.insert(var_symbol)
 
     def visit_ProcedureDecl(self, node):
+        # 1. Crear el símbolo correspondiente al procedure (sin asignar parámetros todavía)
+        # 2. Crear el nuevo ámbito (tabla de símbolos) y guardar referencia al ámbito padre.
+        # 3. Asignar el nuevo ámbito al current_scope.
+        # 4. Recorrer los parámetros para:
+        #  4.1. Armar el VarSymbol(param_name, param_type)
+        #  4.2. Insertar símbolo en nuevo ámbito.
+        #  4.3. Insertar símbolo en array 'params' del símbolo ProcedureSymbol.
+        # 5. Visitar el bloque del procedure
+        # 6. Restaurar el ámbito padre antes de salir del nodo.
         proc_name = node.name
         proc_symbol = ProcedureSymbol(proc_name) # param property will be appended in the param loop.
         self.current_scope.insert(proc_symbol)
 
         print('ENTER scope: %s' % proc_name)
+
         # Scope for parameters and Local Variables
         procedure_scope = ScopedSymbolTable(
             scope_name=proc_name,
-            scope_level=2,
+            scope_level=self.current_scope.scope_level+1,
+            enclosing_scope=self.current_scope, # guardo el scope anterior (mi padre)
         )
         self.current_scope = procedure_scope
 
@@ -655,6 +692,10 @@ class SemanticAnalizer(NodeVisitor):
         # Visit procedure block
         self.visit(node.block)
         print(procedure_scope)
+
+        # restauro el scope que guardé antes.
+        self.current_scope = self.current_scope.enclosing_scope
+
         print('LEAVE scope: %s' % proc_name)
 
 
@@ -681,19 +722,21 @@ class SemanticAnalizer(NodeVisitor):
 
 if __name__ == '__main__':
     text = """
-program Main;
-    var x, y : real;
-    procedure Alpha(a : integer);
-      var y : integer;
-    begin
-
-    end;
-begin { Main }
-
-end. { Main }
+        program Main;
+        var x, y: real;
+        procedure Alpha(a : integer);
+            var y : integer;
+        begin
+            x := b + x + y;
+        end;
+        begin { Main }
+        end.  { Main }
 """
     lexer = Lexer(text)
     parser = Parser(lexer)
     ast = parser.parse()
     semantic_analyzer = SemanticAnalizer()
-    semantic_analyzer.visit(ast)
+    try:
+        semantic_analyzer.visit(ast)
+    except Exception as e:
+        print(e)
