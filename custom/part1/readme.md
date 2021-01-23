@@ -1,11 +1,13 @@
 ### Tokenizing Strings
 
 Hi and welcome to this first unofficial part. Today will learn how to create string tokens 
-in order to print text in the next chapters, so these are the steps we need to do in the lexer class:
+in order to print text in the next chapters, so these are the `tasks` we need to do in the lexer class:
 
-**Task 1.** Create another TokenType enum like: STRING = 'STRING'.
-**Task 2.** Create one method called `string` and return the string token.
-**Task 3.** Modify the `get_next_token()` method in order to recognize the string delimiter.
+***
+
+1. Create another `TokenType` enum like: STRING = 'STRING'.
+2. Create one method called `string` and return the string token.
+3. Modify the `get_next_token()` method in order to recognize the string delimiter.
 
 Find the changes code in `spi.py` by looking the order of these points, for example if you want to
 find the first task just need to find the region of code enclosed by `#>>part1->Task1` and so forth.
