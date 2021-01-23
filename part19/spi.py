@@ -1,4 +1,4 @@
-"""SPI - Simple Pascal Interpreter. Part 18"""
+"""SPI - Simple Pascal Interpreter. Part 19"""
 
 import argparse
 import sys
@@ -854,11 +854,11 @@ class ScopedSymbolTable:
              self.enclosing_scope.scope_name if self.enclosing_scope else None
             )
         ):
-            lines.append('%-15s: %s' % (header_name, header_value))
+            lines.append(f'{header_name:<15}: {header_value}')
         h2 = 'Scope (Scoped symbol table) contents'
         lines.extend([h2, '-' * len(h2)])
         lines.extend(
-            ('%7s: %r' % (key, value))
+            f'{key:>7}: {value}'
             for key, value in self._symbols.items()
         )
         lines.append('\n')
@@ -873,10 +873,7 @@ class ScopedSymbolTable:
 
     def insert(self, symbol):
         self.log(f'Insert: {symbol.name}')
-        # asignamos el scope_leve a todos los
-        # objetos que hereden de symbol
         symbol.scope_level = self.scope_level
-
         self._symbols[symbol.name] = symbol
 
     def lookup(self, name, current_scope_only=False):
