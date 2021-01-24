@@ -1283,17 +1283,14 @@ class Interpreter(NodeVisitor):
             # get the value of every element and print it out.
             for expression in node.expressions:
                 value = self.visit(expression)
-                if node.new_line:
-                    print(value)
-                else:
-                    print(value, end=" ")
+                print(value, end=" ")
+            if node.new_line:
+                print('\n')
         else:
             # print blank like Pascal does.
+            print(" ", end=" ")
             if node.new_line:
-                print(" ")
-            else:
-                print(" ", end=" ")
-            
+                print(" ")            
     #>>part2->Task8
 
     def visit_ProcedureDecl(self, node):

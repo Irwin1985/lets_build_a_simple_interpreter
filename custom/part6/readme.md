@@ -144,3 +144,62 @@ We already know the rest of the productios:
           | variable
 ```
 ![Factor](https://github.com/Irwin1985/lets_build_a_simple_interpreter/blob/main/custom/part6/term.png)
+
+Enough theory! Now let's get our hands dirty...
+
+1. Rename the `expr` method to `arithmetic_expr`.
+2. Create the new `expr` method following the new grammar for it.
+3. Create the new `relation` method associated with the `relation` production rule.
+4. Modify the `visit_BinOp` method in the `Interpreter` class and perform the relational operations.
+
+Okay, let's see what we have done...
+
+```python
+    text = """
+    program Main;
+        var a, b : integer;
+    begin
+        a := 1;
+        b := 2;
+        writeln('a > b => ', a > b);
+        writeln('a < b => ', a < b);
+        writeln('a = b => ', a = b);
+        writeln('a >= b => ', a >= b);
+        writeln('a <= b => ', a <= b);
+        writeln('a <> b => ', a <> b);
+    end.
+    """
+    lexer = Lexer(text)
+    try:
+        parser = Parser(lexer)
+        tree = parser.parse()
+    except (LexerError, ParserError) as e:
+        print(e.message)
+        sys.exit(1)
+
+    semantic_analyzer = SemanticAnalyzer()
+    try:
+        semantic_analyzer.visit(tree)
+    except SemanticError as e:
+        print(e.message)
+        sys.exit(1)
+
+    interpreter = Interpreter(tree)
+    interpreter.interpret()
+```
+Check out the console output:
+
+```python
+>>>> a > b =>  False 
+>>>> a < b =>  True
+>>>> a = b =>  False
+>>>> a >= b =>  False
+>>>> a <= b =>  True
+>>>> a <> b =>  True
+```
+
+🥳🥳Awesome!!!
+
+Our interpreter now can perform Arithmetic expressions, Boolean Expressions or a combination of they two. Thins are getting interesting isn't it? `Fibonacci` sucesion is closer and closer...
+
+Please read and do the implementation once and once again until you understand it. These concepts are clue to the next chapters...

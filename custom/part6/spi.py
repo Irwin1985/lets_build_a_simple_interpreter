@@ -735,10 +735,55 @@ class Parser:
             node.expressions.append(expression)
 
         return node
-    
+        
+    #>>part6->Task2
     def expr(self):
+        return self.relation()
+    #>>part6->Task2
+
+    #>>part6->Task3
+    def relation(self):
         """
-        expr : term ((PLUS | MINUS) term)*
+        relation : arithmetic_expr (rel_op arithmetic_expr)?
+        rel_op   : LESS_THAN
+                 | GREATER_THAN
+                 | EQUAL
+                 | LESS_EQUAL
+                 | GREATER_EQUAL
+                 | NOT_EQUAL
+        """          
+        node = self.arithmetic_expr()
+        if self.current_token.type in (
+            TokenType.LESS_THAN,
+            TokenType.GREATER_THAN,
+            TokenType.LESS_EQUAL,
+            TokenType.GREATER_EQUAL,
+            TokenType.EQUAL,
+            TokenType.NOT_EQUAL,
+        ):
+            token = self.current_token
+            if self.current_token.type == TokenType.LESS_THAN:
+                self.eat(TokenType.LESS_THAN)            
+            elif self.current_token.type == TokenType.GREATER_THAN:
+                self.eat(TokenType.GREATER_THAN)            
+            elif self.current_token.type == TokenType.EQUAL:
+                self.eat(TokenType.EQUAL)            
+            elif self.current_token.type == TokenType.LESS_EQUAL:
+                self.eat(TokenType.LESS_EQUAL)            
+            elif self.current_token.type == TokenType.GREATER_EQUAL:
+                self.eat(TokenType.GREATER_EQUAL)            
+            elif self.current_token.type == TokenType.NOT_EQUAL:
+                self.eat(TokenType.NOT_EQUAL)
+            node = BinOp(left=node, op=token, right=self.arithmetic_expr())
+        return node
+    #>>part6->Task3
+
+    #>>part6->Task1
+    #def expr(self):
+    def arithmetic_expr(self):
+    #>>part6->Task1
+        """
+        arithmetic_expr : term ((PLUS | MINUS) term)*
         """
         node = self.term()
 
@@ -1269,6 +1314,20 @@ class Interpreter(NodeVisitor):
             return self.visit(node.left) // self.visit(node.right)
         elif node.op.type == TokenType.FLOAT_DIV:
             return float(self.visit(node.left)) / float(self.visit(node.right))
+        #>>part6->Task4
+        elif node.op.type == TokenType.LESS_THAN:
+            return self.visit(node.left) < self.visit(node.right)
+        elif node.op.type == TokenType.GREATER_THAN:
+            return self.visit(node.left) > self.visit(node.right)
+        elif node.op.type == TokenType.EQUAL:
+            return self.visit(node.left) == self.visit(node.right)
+        elif node.op.type == TokenType.LESS_EQUAL:
+            return self.visit(node.left) <= self.visit(node.right)
+        elif node.op.type == TokenType.GREATER_EQUAL:
+            return self.visit(node.left) >= self.visit(node.right)
+        elif node.op.type == TokenType.NOT_EQUAL:
+            return self.visit(node.left) != self.visit(node.right)
+        #>>part6->Task4
 
     def visit_Num(self, node):
         return node.value
@@ -1315,16 +1374,14 @@ class Interpreter(NodeVisitor):
             # get the value of every element and print it out.
             for expression in node.expressions:
                 value = self.visit(expression)
-                if node.new_line:
-                    print(value)
-                else:
-                    print(value, end=" ")
+                print(value, end=" ")
+            if node.new_line:
+                print('\n')
         else:
             # print blank like Pascal does.
+            print(" ", end=" ")
             if node.new_line:
                 print(" ")
-            else:
-                print(" ", end=" ")
 
     def visit_ProcedureDecl(self, node):
         pass
@@ -1366,12 +1423,18 @@ class Interpreter(NodeVisitor):
 
 def main():
     text = """
-        program Main;
-          var a : boolean;
-          var b : boolean;
-        begin
-          writeln(a = b);
-        end.
+    program Main;
+        var a, b : integer;
+    begin
+        a := 1;
+        b := 2;
+        writeln('a > b => ', a > b);
+        writeln('a < b => ', a < b);
+        writeln('a = b => ', a = b);
+        writeln('a >= b => ', a >= b);
+        writeln('a <= b => ', a <= b);
+        writeln('a <> b => ', a <> b);
+    end.
     """
     lexer = Lexer(text)
     try:
