@@ -53,6 +53,9 @@ class TokenType(Enum):
     DOT           = '.'
     COLON         = ':'
     COMMA         = ','
+    LESS_THAN     = '<'
+    GREATER_THAN  = '>'
+    EQUAL         = '='    
     # block of reserved words
     PROGRAM       = 'PROGRAM'  # marks the beginning of the block
     INTEGER       = 'INTEGER'
@@ -61,10 +64,18 @@ class TokenType(Enum):
     VAR           = 'VAR'
     PROCEDURE     = 'PROCEDURE'
     BEGIN         = 'BEGIN'
-    #>>part2->Task1
     WRITE         = 'WRITE'
     WRITELN       = 'WRITELN'
-    #>>part2->Task1
+    TRUE          = 'TRUE'
+    FALSE         = 'FALSE'
+    BOOLEAN       = 'BOOLEAN'
+    
+    #>>part7->Task1
+    IF            = 'IF'
+    THEN          = 'THEN'
+    ELSE          = 'ELSE'
+    #>>part7->Task1
+
     END           = 'END'      # marks the end of the block
     # misc
     ID            = 'ID'
@@ -72,6 +83,10 @@ class TokenType(Enum):
     REAL_CONST    = 'REAL_CONST'
     ASSIGN        = ':='
     STRING        = 'STRING'
+    # composed-character token
+    LESS_EQUAL    = '<='
+    GREATER_EQUAL = '>='
+    NOT_EQUAL     = '<>'
     EOF           = 'EOF'    
 
 
@@ -279,7 +294,39 @@ class Lexer:
                 self.advance()
                 self.advance()
                 return token
+            # composed-character token
+            if self.current_char == '<' and self.peek() == '=':
+                token = Token(
+                    type=TokenType.LESS_EQUAL,
+                    value=TokenType.LESS_EQUAL.value, # '<='
+                    lineno=self.lineno,
+                    column=self.column,
+                )
+                self.advance() # eat the '<' character.
+                self.advance() # eat the '=' character.
+                return token
 
+            if self.current_char == '<' and self.peek() == '>':
+                token = Token(
+                    type=TokenType.NOT_EQUAL,
+                    value=TokenType.NOT_EQUAL.value, # '<>'
+                    lineno=self.lineno,
+                    column=self.column,
+                )
+                self.advance() # eat the '<' character.
+                self.advance() # eat the '>' character.
+                return token
+            
+            if self.current_char == '>' and self.peek() == '=':
+                token = Token(
+                    type=TokenType.GREATER_EQUAL,
+                    value=TokenType.GREATER_EQUAL.value, # '>='
+                    lineno=self.lineno,
+                    column=self.column,
+                )
+                self.advance() # eat the '>' character.
+                self.advance() # eat the '=' character.
+                return token
             # single-character token
             try:
                 # get enum member by value, e.g.
@@ -312,31 +359,26 @@ class Lexer:
 class AST:
     pass
 
-
 class BinOp(AST):
     def __init__(self, left, op, right):
         self.left = left
         self.token = self.op = op
         self.right = right
 
-
 class Num(AST):
     def __init__(self, token):
         self.token = token
         self.value = token.value
-
 
 class UnaryOp(AST):
     def __init__(self, op, expr):
         self.token = self.op = op
         self.expr = expr
 
-
 class Compound(AST):
     """Represents a 'BEGIN ... END' block"""
     def __init__(self):
         self.children = []
-
 
 class Assign(AST):
     def __init__(self, left, op, right):
@@ -344,61 +386,50 @@ class Assign(AST):
         self.token = self.op = op
         self.right = right
 
-
 class Var(AST):
     """The Var node is constructed out of ID token."""
     def __init__(self, token):
         self.token = token
         self.value = token.value
 
-
 class NoOp(AST):
     pass
 
-#>>part2->Task5
 class String(AST):
     def __init__(self, token):
         self.token = token
         self.value = token.value
-#>>part2->Task5
-
 
 class Program(AST):
     def __init__(self, name, block):
         self.name = name
         self.block = block
 
-
 class Block(AST):
     def __init__(self, declarations, compound_statement):
         self.declarations = declarations
         self.compound_statement = compound_statement
-
 
 class VarDecl(AST):
     def __init__(self, var_node, type_node):
         self.var_node = var_node
         self.type_node = type_node
 
-
 class Type(AST):
     def __init__(self, token):
         self.token = token
         self.value = token.value
-
 
 class Param(AST):
     def __init__(self, var_node, type_node):
         self.var_node = var_node
         self.type_node = type_node
 
-
 class ProcedureDecl(AST):
     def __init__(self, proc_name, formal_params, block_node):
         self.proc_name = proc_name
         self.formal_params = formal_params  # a list of Param nodes
         self.block_node = block_node
-
 
 class ProcedureCall(AST):
     def __init__(self, proc_name, actual_params, token):
@@ -408,7 +439,6 @@ class ProcedureCall(AST):
         # a reference to procedure declaration symbol
         self.proc_symbol = None
 
-#>>part2->Task2
 class WriteStmt(AST):
     def __init__(self):
         # new_line will be used in the interpreter in order
@@ -416,16 +446,37 @@ class WriteStmt(AST):
         self.new_line = False
         # array of expressions AST (see expr grammar)
         self.expressions = []
-#>>part2->Task2
+
+class Boolean(AST):
+    def __init__(self, token):
+        self.token = token
+        self.value = token.value
+
+#>>part7->Task2
+class IfStmt(AST):
+    def __init__(self, condition):
+        self.condition = condition
+        self.consequences = []
+        self.alternatives = []
+#>>part7->Task2
+
 
 class Parser:
     def __init__(self, lexer):
         self.lexer = lexer
         # set current token to the first token taken from the input
-        self.current_token = self.get_next_token()
+        # policia
+        self.current_token = self.lexer.get_next_token()
+        self.next_token = self.lexer.get_next_token()
+        # policia
+
 
     def get_next_token(self):
-        return self.lexer.get_next_token()
+        # policia
+        current_token = self.next_token
+        self.next_token = self.lexer.get_next_token()
+        return current_token
+        # policia
 
     def error(self, error_code, token):
         raise ParserError(
@@ -471,7 +522,7 @@ class Parser:
         """
         declarations = []
 
-        if self.current_token.type == TokenType.VAR:
+        while self.current_token.type == TokenType.VAR:
             self.eat(TokenType.VAR)
             while self.current_token.type == TokenType.ID:
                 var_decl = self.variable_declaration()
@@ -562,12 +613,16 @@ class Parser:
     def type_spec(self):
         """type_spec : INTEGER
                      | REAL
+                     | BOOLEAN
         """
         token = self.current_token
         if self.current_token.type == TokenType.INTEGER:
             self.eat(TokenType.INTEGER)
-        else:
+        elif self.current_token.type == TokenType.REAL:
             self.eat(TokenType.REAL)
+        elif self.current_token.type == TokenType.BOOLEAN:
+            self.eat(TokenType.BOOLEAN)
+
         node = Type(token)
         return node
 
@@ -607,20 +662,21 @@ class Parser:
                   | assignment_statement
                   | write
                   | writeln
+                  | if_statement
                   | empty
         """
         if self.current_token.type == TokenType.BEGIN:
             node = self.compound_statement()
-        #>>part2->Task3
         elif self.current_token.type in (TokenType.WRITE, TokenType.WRITELN):
             node = self.write_statement()
-        #>>part2->Task3
-        elif (self.current_token.type == TokenType.ID and
-              self.lexer.current_char == '('
-        ):
+        elif (self.current_token.type == TokenType.ID and self.lexer.current_char == '('):
             node = self.proccall_statement()
         elif self.current_token.type == TokenType.ID:
             node = self.assignment_statement()
+        #>>part7->Task3
+        elif self.current_token.type == TokenType.IF:
+            node = self.if_statement()
+        #>>part7->Task3
         else:
             node = self.empty()
         return node
@@ -669,12 +725,7 @@ class Parser:
         node = Var(self.current_token)
         self.eat(TokenType.ID)
         return node
-
-    def empty(self):
-        """An empty production"""
-        return NoOp()
     
-    #>>part2->Task4
     def write_statement(self):
         """
         write_statement : WRITE | WRITELN (LPAREN (expr (SEMI expr)*)? RPAREN)?
@@ -709,11 +760,99 @@ class Parser:
             node.expressions.append(expression)
 
         return node
-    #>>part2->Task4
+
+    #>>part7->Task4
+    def if_statement(self):
+        """if_statement : IF condition THEN statement_list ( else_statement | elsif_statement )?"""
+        self.eat(TokenType.IF)
+        # parse the condition
+        condition = self.expr()
+        self.eat(TokenType.THEN)
+        
+        # get the consequences statements
+        consequences = self.statement_list()
+
+        # alternatives `else` is empty by default.
+        alternatives = []
+        
+        # policia
+        if self.current_token.type == TokenType.ELSE and self.next_token.type == TokenType.IF:
+            alternatives.append(self.elsif_statement())
+        elif self.current_token.type == TokenType.ELSE:
+            alternatives.extend(self.else_statement())
+        # policia
+
+        node = IfStmt(condition=condition)
+        
+        for consequence in consequences:
+            node.consequences.append(consequence)
+        
+        for alternative in alternatives:
+            node.alternatives.append(alternative)
+        
+        return node
+
+    def else_statement(self):
+        """ else_statement : ELSE statement_list """
+        self.eat(TokenType.ELSE)
+        nodes = self.statement_list()
+        statements = [
+            node for node in nodes
+        ]
+        return statements
     
+    def elsif_statement(self):
+        """ elsif_statement : ELSE if_statement """        
+        self.eat(TokenType.ELSE)
+        return self.if_statement()
+
+    #>>part7->Task4
+
+    def empty(self):
+        """An empty production"""
+        return NoOp()
+
     def expr(self):
+        return self.relation()
+
+    def relation(self):
         """
-        expr : term ((PLUS | MINUS) term)*
+        relation : arithmetic_expr (rel_op arithmetic_expr)?
+        rel_op   : LESS_THAN
+                 | GREATER_THAN
+                 | EQUAL
+                 | LESS_EQUAL
+                 | GREATER_EQUAL
+                 | NOT_EQUAL
+        """          
+        node = self.arithmetic_expr()
+        if self.current_token.type in (
+            TokenType.LESS_THAN,
+            TokenType.GREATER_THAN,
+            TokenType.LESS_EQUAL,
+            TokenType.GREATER_EQUAL,
+            TokenType.EQUAL,
+            TokenType.NOT_EQUAL,
+        ):
+            token = self.current_token
+            if self.current_token.type == TokenType.LESS_THAN:
+                self.eat(TokenType.LESS_THAN)            
+            elif self.current_token.type == TokenType.GREATER_THAN:
+                self.eat(TokenType.GREATER_THAN)            
+            elif self.current_token.type == TokenType.EQUAL:
+                self.eat(TokenType.EQUAL)            
+            elif self.current_token.type == TokenType.LESS_EQUAL:
+                self.eat(TokenType.LESS_EQUAL)            
+            elif self.current_token.type == TokenType.GREATER_EQUAL:
+                self.eat(TokenType.GREATER_EQUAL)            
+            elif self.current_token.type == TokenType.NOT_EQUAL:
+                self.eat(TokenType.NOT_EQUAL)
+            node = BinOp(left=node, op=token, right=self.arithmetic_expr())
+        return node
+
+    def arithmetic_expr(self):
+        """
+        arithmetic_expr : term ((PLUS | MINUS) term)*
         """
         node = self.term()
 
@@ -777,12 +916,16 @@ class Parser:
             node = self.expr()
             self.eat(TokenType.RPAREN)
             return node
-        #>>part2->Task6
         elif token.type == TokenType.STRING:
             # Nothing new here, just eat the STRING token and return the String() AST.
             self.eat(TokenType.STRING)
             return String(token)
-        #>>part2->Task6
+        elif token.type in (TokenType.TRUE, TokenType.FALSE):
+            if token.type == TokenType.TRUE:
+                self.eat(TokenType.TRUE)
+            elif token.type == TokenType.FALSE:
+                self.eat(TokenType.FALSE)
+            return Boolean(token)
         else:
             node = self.variable()
             return node
@@ -888,7 +1031,6 @@ class VarSymbol(Symbol):
 
     __repr__ = __str__
 
-
 class BuiltinTypeSymbol(Symbol):
     def __init__(self, name):
         super().__init__(name)
@@ -901,7 +1043,6 @@ class BuiltinTypeSymbol(Symbol):
             class_name=self.__class__.__name__,
             name=self.name,
         )
-
 
 class ProcedureSymbol(Symbol):
     def __init__(self, name, formal_params=None):
@@ -931,6 +1072,7 @@ class ScopedSymbolTable:
     def _init_builtins(self):
         self.insert(BuiltinTypeSymbol('INTEGER'))
         self.insert(BuiltinTypeSymbol('REAL'))
+        self.insert(BuiltinTypeSymbol('BOOLEAN'))
 
     def __str__(self):
         h1 = 'SCOPE (SCOPED SYMBOL TABLE)'
@@ -1025,7 +1167,16 @@ class SemanticAnalyzer(NodeVisitor):
     def visit_NoOp(self, node):
         pass
 
-    #>>part2->Task7
+    #>>part7->Task5
+    def visit_IfStmt(self, node):
+        self.visit(node.condition)
+        for statement in node.consequences:
+            self.visit(statement)
+
+        for statement in node.alternatives:
+            self.visit(statement)
+    #>>part7->Task5
+
     def visit_String(self, node):
         # nothing to check in this AST.
         pass
@@ -1034,7 +1185,6 @@ class SemanticAnalyzer(NodeVisitor):
         # check and resolve every expression
         for expression in node.expressions:
             self.visit(expression)
-    #>>part2->Task7
 
     def visit_BinOp(self, node):
         self.visit(node.left)
@@ -1104,6 +1254,10 @@ class SemanticAnalyzer(NodeVisitor):
             self.error(error_code=ErrorCode.ID_NOT_FOUND, token=node.token)
 
     def visit_Num(self, node):
+        pass
+
+    def visit_Boolean(self, node):
+        # nothing to check
         pass
 
     def visit_UnaryOp(self, node):
@@ -1239,8 +1393,23 @@ class Interpreter(NodeVisitor):
             return self.visit(node.left) // self.visit(node.right)
         elif node.op.type == TokenType.FLOAT_DIV:
             return float(self.visit(node.left)) / float(self.visit(node.right))
+        elif node.op.type == TokenType.LESS_THAN:
+            return self.visit(node.left) < self.visit(node.right)
+        elif node.op.type == TokenType.GREATER_THAN:
+            return self.visit(node.left) > self.visit(node.right)
+        elif node.op.type == TokenType.EQUAL:
+            return self.visit(node.left) == self.visit(node.right)
+        elif node.op.type == TokenType.LESS_EQUAL:
+            return self.visit(node.left) <= self.visit(node.right)
+        elif node.op.type == TokenType.GREATER_EQUAL:
+            return self.visit(node.left) >= self.visit(node.right)
+        elif node.op.type == TokenType.NOT_EQUAL:
+            return self.visit(node.left) != self.visit(node.right)
 
     def visit_Num(self, node):
+        return node.value
+
+    def visit_Boolean(self, node):
         return node.value
 
     def visit_UnaryOp(self, node):
@@ -1272,7 +1441,18 @@ class Interpreter(NodeVisitor):
     def visit_NoOp(self, node):
         pass
 
-    #>>part2->Task8
+    #>>part7->Task5
+    def visit_IfStmt(self, node):
+        if self.visit(node.condition):
+            # vist each statement from the if part.
+            for statement in node.consequences:
+                self.visit(statement)
+        else:
+            # vist each statement from the else part.
+            for statement in node.alternatives:
+                self.visit(statement)
+    #>>part7->Task5
+
     def visit_String(self, node):
         return node.value
 
@@ -1290,8 +1470,7 @@ class Interpreter(NodeVisitor):
             # print blank like Pascal does.
             print(" ", end=" ")
             if node.new_line:                
-                print() # empty line          
-    #>>part2->Task8
+                print() # empty line
 
     def visit_ProcedureDecl(self, node):
         pass
@@ -1334,9 +1513,56 @@ class Interpreter(NodeVisitor):
 def main():
     text = """
     program Main;
+        var a, b : integer;
     begin
-      writeLn('Hello world!', 'This is cool!', 3 * 3, (1 + 3) * 2);
-      writeln('Now that I can talk...', 'Let me say...', 'thanks and keep moving...');
+        a := 12;
+        if a = 1 then
+          begin
+            writeln('primer if 1...');
+            writeln('primer if 2...');
+            writeln('primer if 3...');
+          end
+        else if a = 2 then
+          begin
+            writeln('segundo if 1...');
+            writeln('segundo if 2...');
+            writeln('segundo if 3...');
+          end
+        else if a = 3 then
+          begin
+            writeln('tercer if 1...');
+            writeln('tercer if 2...');
+            writeln('tercer if 3...');
+          end
+        else if a = 4 then
+          begin
+            writeln('cuarto if 1...');
+            writeln('cuarto if 2...');
+            writeln('cuarto if 3...');
+          end
+        else if a = 5 then
+          begin
+            writeln('quinto if 1...');
+            writeln('quinto if 2...');
+            writeln('quinto if 3...');
+          end
+        else if a = 6 then
+          begin
+            writeln('sexto if 1...');
+            writeln('sexto if 2...');
+            writeln('sexto if 3...');
+          end
+        else if a = 7 then
+          begin
+            writeln('septimo if 1...');
+            writeln('septimo if 2...');
+            writeln('septimo if 3...');
+          end
+        else
+            if a = 12 then
+                write('jaja la pegue con 12 en un IF anidado... yupiiiiii....')
+            else
+                write('No se que es pana...');
     end.
     """
     lexer = Lexer(text)
