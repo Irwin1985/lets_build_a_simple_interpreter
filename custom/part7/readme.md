@@ -100,10 +100,10 @@ ELSE
 
 If they were mathematical formula then we could translate it into:
 
-**IS**  = **I**f **S**tructure
-**EC**  = **E**lse **C**omplement
-**EIC** = **E**lse **I**f **C**omplement
-**G**   = **G**grammar
+* **IS**  = **I**f **S**tructure
+* **EC**  = **E**lse **C**omplement
+* **EIC** = **E**lse **I**f **C**omplement
+* **G**   = **G**grammar
 
 Then the above example translated into this formula is:
 
