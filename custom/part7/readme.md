@@ -111,7 +111,7 @@ Then the above example translated into this formula is:
 
 Now let's add the `ELSE IF` complement into the main structure *(IS)*.
 
-`G = IS + EIF`
+`G = IS + EIC`
 
 Which is the same as:
 
