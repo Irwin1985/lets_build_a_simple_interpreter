@@ -95,4 +95,4 @@ The starting symbol is: `Expression`
   expr : relation
 ```
 
-![Relation](https://github.com/Irwin1985/lets_build_a_simple_interpreter/tree/main/custom/part6/expr.png)
+![Relation](https://github.com/Irwin1985/lets_build_a_simple_interpreter/blob/main/custom/part6/expr.png)
