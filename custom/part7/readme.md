@@ -122,7 +122,7 @@ ELSE IF condition2 THEN
   consequenses2
 ```
 
-Did you get it? I know this is crazy and no textbooks explain any formula like this but I ivented it in order to understand the flexible IF grammar Pascal provides. Once you get the correct grammar (without ambiguities) then the other challenge is represent the grammar in code and that's what we are going to do right now...
+Did you get it? I know this is crazy and no textbooks explains any formula like this but I ivented it in order to understand the flexible IF grammar Pascal provides. Once you get the correct grammar *(without ambiguities)* then the other challenge is represent the grammar in code and that's what we are going to do right now...
 
 These examples are allowed by the production above:
 
