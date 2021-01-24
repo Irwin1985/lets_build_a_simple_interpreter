@@ -94,5 +94,53 @@ The starting symbol is: `Expression`
 ```
   expr : relation
 ```
+![Expression](https://github.com/Irwin1985/lets_build_a_simple_interpreter/blob/main/custom/part6/expr.png)
 
-![Relation](https://github.com/Irwin1985/lets_build_a_simple_interpreter/blob/main/custom/part6/expr.png)
+There's nothing new here, the production says that an expression is just a relation and now let's see what a relation look like:
+
+```
+  relation : arithmetic_expr (rel_op arithmetic_expr)?
+```
+![Relation](https://github.com/Irwin1985/lets_build_a_simple_interpreter/blob/main/custom/part6/relation.png)
+
+A `relation` is an **Arithmetic Expression** optionally followed by a **Relational Operator** followed by an **Arithmetic Expression**. *Do you understand what is going on here?* I hope you do because this production is the key to support **relational operators** and in the future we will extend it to support logical operators like `AND`, `OR`, `XOR` and `NOT`.
+
+Let's keep moving with the **Relational Operator** production:
+```
+  rel_op  : LESS_THAN
+          | GREATER_THAN
+          | EQUAL
+          | LESS_EQUAL
+          | GREATER_EQUAL
+          | NOT_EQUAL
+```
+Pretty easy right?
+
+![Relational Operators](https://github.com/Irwin1985/lets_build_a_simple_interpreter/blob/main/custom/part6/rel_op.png)
+
+We already know the rest of the productios:
+
+`arithmetic_expr`
+```
+  arithmetic_expr : term ((PLUS | MINUS) term)*
+```
+![Arithmetic Expression](https://github.com/Irwin1985/lets_build_a_simple_interpreter/blob/main/custom/part6/arithmetic_expr.png)
+
+`term`
+```
+  term  : factor ((MUL | INTEGER_DIV | FLOAT_DIV) factor)
+```
+![Term](https://github.com/Irwin1985/lets_build_a_simple_interpreter/blob/main/custom/part6/term.png)
+
+`factor`
+```
+  factor  : PLUS factor
+          | MINUS factor
+          | INTEGER_CONST
+          | REAL_CONST
+          | LPAREN expr RPAREN
+          | TRUE
+          | FALSE
+          | variable
+```
+![Factor](https://github.com/Irwin1985/lets_build_a_simple_interpreter/blob/main/custom/part6/term.png)
