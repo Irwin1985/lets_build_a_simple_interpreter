@@ -66,11 +66,9 @@ class TokenType(Enum):
     BEGIN         = 'BEGIN'
     WRITE         = 'WRITE'
     WRITELN       = 'WRITELN'
-    #>>part4->Task1
     TRUE          = 'TRUE'
     FALSE         = 'FALSE'
     BOOLEAN       = 'BOOLEAN'
-    #>>part4->Task1
     END           = 'END'      # marks the end of the block
     # misc
     ID            = 'ID'
@@ -442,12 +440,10 @@ class WriteStmt(AST):
         # array of expressions AST (see expr grammar)
         self.expressions = []
 
-#>>part4->Task2
 class Boolean(AST):
     def __init__(self, token):
         self.token = token
         self.value = token.value
-#>>part4->Task2
 
 class Parser:
     def __init__(self, lexer):
@@ -598,12 +594,10 @@ class Parser:
         token = self.current_token
         if self.current_token.type == TokenType.INTEGER:
             self.eat(TokenType.INTEGER)
-        #>>part4->Task4
         elif self.current_token.type == TokenType.REAL:
             self.eat(TokenType.REAL)
         elif self.current_token.type == TokenType.BOOLEAN:
             self.eat(TokenType.BOOLEAN)
-        #>>part4->Task4
 
         node = Type(token)
         return node
@@ -812,14 +806,12 @@ class Parser:
             # Nothing new here, just eat the STRING token and return the String() AST.
             self.eat(TokenType.STRING)
             return String(token)
-        #>>part4->Task3
         elif token.type in (TokenType.TRUE, TokenType.FALSE):
             if token.type == TokenType.TRUE:
                 self.eat(TokenType.TRUE)
             elif token.type == TokenType.FALSE:
                 self.eat(TokenType.FALSE)
             return Boolean(token)
-        #>>part4->Task3
         else:
             node = self.variable()
             return node
@@ -966,9 +958,7 @@ class ScopedSymbolTable:
     def _init_builtins(self):
         self.insert(BuiltinTypeSymbol('INTEGER'))
         self.insert(BuiltinTypeSymbol('REAL'))
-        #>>part4->Task5
         self.insert(BuiltinTypeSymbol('BOOLEAN'))
-        #>>part4->Task5
 
     def __str__(self):
         h1 = 'SCOPE (SCOPED SYMBOL TABLE)'
@@ -1142,11 +1132,9 @@ class SemanticAnalyzer(NodeVisitor):
     def visit_Num(self, node):
         pass
 
-    #>>part4->Task6
     def visit_Boolean(self, node):
         # nothing to check
         pass
-    #>>part4->Task6
 
     def visit_UnaryOp(self, node):
         pass
@@ -1285,10 +1273,8 @@ class Interpreter(NodeVisitor):
     def visit_Num(self, node):
         return node.value
 
-    #>>part4->Task6
     def visit_Boolean(self, node):
         return node.value
-    #>>part4->Task6
 
     def visit_UnaryOp(self, node):
         op = node.op.type
