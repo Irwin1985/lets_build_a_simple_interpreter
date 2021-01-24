@@ -72,7 +72,8 @@ Here's the new grammar:
   """
 ```
 
-Pretty strightforward isn't it?😉
+Pretty strightforward isn't it?😉 we just added the `+` wildcard in order to indicate that we'll allow
+one or more repetition of that rule.
 
 Let's keep moving and tackle the grammar implementation:
 
