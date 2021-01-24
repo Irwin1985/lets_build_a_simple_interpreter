@@ -456,8 +456,8 @@ class Boolean(AST):
 class IfStmt(AST):
     def __init__(self, condition):
         self.condition = condition
-        self.consequences = []
-        self.alternatives = []
+        self.consequences = [] # list of statements
+        self.alternatives = [] # list of statements
 #>>part7->Task2
 
 
@@ -465,18 +465,18 @@ class Parser:
     def __init__(self, lexer):
         self.lexer = lexer
         # set current token to the first token taken from the input
-        # policia
+        #>>part7->Task3
         self.current_token = self.lexer.get_next_token()
         self.next_token = self.lexer.get_next_token()
-        # policia
+        #>>part7->Task3
 
 
     def get_next_token(self):
-        # policia
+        #>>part7->Task3
         current_token = self.next_token
         self.next_token = self.lexer.get_next_token()
         return current_token
-        # policia
+        #>>part7->Task3
 
     def error(self, error_code, token):
         raise ParserError(
@@ -673,10 +673,10 @@ class Parser:
             node = self.proccall_statement()
         elif self.current_token.type == TokenType.ID:
             node = self.assignment_statement()
-        #>>part7->Task3
+        #>>part7->Task4
         elif self.current_token.type == TokenType.IF:
             node = self.if_statement()
-        #>>part7->Task3
+        #>>part7->Task4
         else:
             node = self.empty()
         return node
@@ -761,7 +761,7 @@ class Parser:
 
         return node
 
-    #>>part7->Task4
+    #>>part7->Task5
     def if_statement(self):
         """if_statement : IF condition THEN statement_list ( else_statement | elsif_statement )?"""
         self.eat(TokenType.IF)
@@ -775,18 +775,18 @@ class Parser:
         # alternatives `else` is empty by default.
         alternatives = []
         
-        # policia
         if self.current_token.type == TokenType.ELSE and self.next_token.type == TokenType.IF:
             alternatives.append(self.elsif_statement())
         elif self.current_token.type == TokenType.ELSE:
             alternatives.extend(self.else_statement())
-        # policia
 
         node = IfStmt(condition=condition)
         
+        # fill all consequences nodes.
         for consequence in consequences:
             node.consequences.append(consequence)
-        
+
+        # fill all alternatives nodes.
         for alternative in alternatives:
             node.alternatives.append(alternative)
         
@@ -805,8 +805,7 @@ class Parser:
         """ elsif_statement : ELSE if_statement """        
         self.eat(TokenType.ELSE)
         return self.if_statement()
-
-    #>>part7->Task4
+    #>>part7->Task5
 
     def empty(self):
         """An empty production"""
@@ -1167,7 +1166,7 @@ class SemanticAnalyzer(NodeVisitor):
     def visit_NoOp(self, node):
         pass
 
-    #>>part7->Task5
+    #>>part7->Task6
     def visit_IfStmt(self, node):
         self.visit(node.condition)
         for statement in node.consequences:
@@ -1175,7 +1174,7 @@ class SemanticAnalyzer(NodeVisitor):
 
         for statement in node.alternatives:
             self.visit(statement)
-    #>>part7->Task5
+    #>>part7->Task6
 
     def visit_String(self, node):
         # nothing to check in this AST.
@@ -1441,7 +1440,7 @@ class Interpreter(NodeVisitor):
     def visit_NoOp(self, node):
         pass
 
-    #>>part7->Task5
+    #>>part7->Task7
     def visit_IfStmt(self, node):
         if self.visit(node.condition):
             # vist each statement from the if part.
@@ -1451,7 +1450,7 @@ class Interpreter(NodeVisitor):
             # vist each statement from the else part.
             for statement in node.alternatives:
                 self.visit(statement)
-    #>>part7->Task5
+    #>>part7->Task7
 
     def visit_String(self, node):
         return node.value
@@ -1518,51 +1517,37 @@ def main():
         a := 12;
         if a = 1 then
           begin
-            writeln('primer if 1...');
-            writeln('primer if 2...');
-            writeln('primer if 3...');
+            writeln('this is the if 1...');
           end
         else if a = 2 then
           begin
-            writeln('segundo if 1...');
-            writeln('segundo if 2...');
-            writeln('segundo if 3...');
+            writeln('this is the if 2...');
           end
         else if a = 3 then
           begin
-            writeln('tercer if 1...');
-            writeln('tercer if 2...');
-            writeln('tercer if 3...');
+            writeln('this is the if 3...');
           end
         else if a = 4 then
           begin
-            writeln('cuarto if 1...');
-            writeln('cuarto if 2...');
-            writeln('cuarto if 3...');
+            writeln('this is the if 4...');
           end
         else if a = 5 then
           begin
-            writeln('quinto if 1...');
-            writeln('quinto if 2...');
-            writeln('quinto if 3...');
+            writeln('this is the if 5...');
           end
         else if a = 6 then
           begin
-            writeln('sexto if 1...');
-            writeln('sexto if 2...');
-            writeln('sexto if 3...');
+            writeln('this is the if 6...');
           end
         else if a = 7 then
           begin
-            writeln('septimo if 1...');
-            writeln('septimo if 2...');
-            writeln('septimo if 3...');
+            writeln('this is the if 7...');
           end
         else
             if a = 12 then
-                write('jaja la pegue con 12 en un IF anidado... yupiiiiii....')
+                write('its 12. Yeah baby...!!! BTW: this is a nested If... pretty cool eh...?')
             else
-                write('No se que es pana...');
+                write('I dont know what is it :(');
     end.
     """
     lexer = Lexer(text)

@@ -1331,12 +1331,12 @@ class Interpreter(NodeVisitor):
                 value = self.visit(expression)
                 print(value, end=" ")
             if node.new_line:
-                print('\n')
+                print() # empty line
         else:
             # print blank like Pascal does.
             print(" ", end=" ")
-            if node.new_line:
-                print(" ")
+            if node.new_line:                
+                print() # empty line  
 
     def visit_ProcedureDecl(self, node):
         pass
