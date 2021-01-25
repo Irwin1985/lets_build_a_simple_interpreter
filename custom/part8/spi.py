@@ -33,7 +33,6 @@ class ParserError(Error):
 class SemanticError(Error):
     pass
 
-
 ###############################################################################
 #                                                                             #
 #  LEXER                                                                      #
@@ -53,6 +52,9 @@ class TokenType(Enum):
     DOT           = '.'
     COLON         = ':'
     COMMA         = ','
+    LESS_THAN     = '<'
+    GREATER_THAN  = '>'
+    EQUAL         = '='    
     # block of reserved words
     PROGRAM       = 'PROGRAM'  # marks the beginning of the block
     INTEGER       = 'INTEGER'
@@ -61,13 +63,26 @@ class TokenType(Enum):
     VAR           = 'VAR'
     PROCEDURE     = 'PROCEDURE'
     BEGIN         = 'BEGIN'
+    WRITE         = 'WRITE'
+    WRITELN       = 'WRITELN'
+    TRUE          = 'TRUE'
+    FALSE         = 'FALSE'
+    BOOLEAN       = 'BOOLEAN'
+    IF            = 'IF'
+    THEN          = 'THEN'
+    ELSE          = 'ELSE'
     END           = 'END'      # marks the end of the block
     # misc
     ID            = 'ID'
     INTEGER_CONST = 'INTEGER_CONST'
     REAL_CONST    = 'REAL_CONST'
     ASSIGN        = ':='
-    EOF           = 'EOF'
+    STRING        = 'STRING'
+    # composed-character token
+    LESS_EQUAL    = '<='
+    GREATER_EQUAL = '>='
+    NOT_EQUAL     = '<>'
+    EOF           = 'EOF'    
 
 
 class Token:
@@ -223,6 +238,20 @@ class Lexer:
             token.value = value.upper()
 
         return token
+    
+    def string(self):
+        result = ''
+        # Create a new token with current line and column number
+        token = Token(type=TokenType.STRING, value=None, lineno=self.lineno, column=self.column)
+        while self.current_char is not None and self.current_char != "'":
+            result += self.current_char
+            self.advance()
+        
+        self.advance() # skip the closing "'"
+        
+        token.value = result
+
+        return token
 
     def get_next_token(self):
         """Lexical analyzer (also known as scanner or tokenizer)
@@ -245,6 +274,10 @@ class Lexer:
 
             if self.current_char.isdigit():
                 return self.number()
+            
+            if self.current_char == "'":
+                self.advance() # skip the first "'"
+                return self.string()
 
             if self.current_char == ':' and self.peek() == '=':
                 token = Token(
@@ -256,7 +289,39 @@ class Lexer:
                 self.advance()
                 self.advance()
                 return token
+            # composed-character token
+            if self.current_char == '<' and self.peek() == '=':
+                token = Token(
+                    type=TokenType.LESS_EQUAL,
+                    value=TokenType.LESS_EQUAL.value, # '<='
+                    lineno=self.lineno,
+                    column=self.column,
+                )
+                self.advance() # eat the '<' character.
+                self.advance() # eat the '=' character.
+                return token
 
+            if self.current_char == '<' and self.peek() == '>':
+                token = Token(
+                    type=TokenType.NOT_EQUAL,
+                    value=TokenType.NOT_EQUAL.value, # '<>'
+                    lineno=self.lineno,
+                    column=self.column,
+                )
+                self.advance() # eat the '<' character.
+                self.advance() # eat the '>' character.
+                return token
+            
+            if self.current_char == '>' and self.peek() == '=':
+                token = Token(
+                    type=TokenType.GREATER_EQUAL,
+                    value=TokenType.GREATER_EQUAL.value, # '>='
+                    lineno=self.lineno,
+                    column=self.column,
+                )
+                self.advance() # eat the '>' character.
+                self.advance() # eat the '=' character.
+                return token
             # single-character token
             try:
                 # get enum member by value, e.g.
@@ -289,31 +354,26 @@ class Lexer:
 class AST:
     pass
 
-
 class BinOp(AST):
     def __init__(self, left, op, right):
         self.left = left
         self.token = self.op = op
         self.right = right
 
-
 class Num(AST):
     def __init__(self, token):
         self.token = token
         self.value = token.value
-
 
 class UnaryOp(AST):
     def __init__(self, op, expr):
         self.token = self.op = op
         self.expr = expr
 
-
 class Compound(AST):
     """Represents a 'BEGIN ... END' block"""
     def __init__(self):
         self.children = []
-
 
 class Assign(AST):
     def __init__(self, left, op, right):
@@ -321,54 +381,50 @@ class Assign(AST):
         self.token = self.op = op
         self.right = right
 
-
 class Var(AST):
     """The Var node is constructed out of ID token."""
     def __init__(self, token):
         self.token = token
         self.value = token.value
 
-
 class NoOp(AST):
     pass
 
+class String(AST):
+    def __init__(self, token):
+        self.token = token
+        self.value = token.value
 
 class Program(AST):
     def __init__(self, name, block):
         self.name = name
         self.block = block
 
-
 class Block(AST):
     def __init__(self, declarations, compound_statement):
         self.declarations = declarations
         self.compound_statement = compound_statement
-
 
 class VarDecl(AST):
     def __init__(self, var_node, type_node):
         self.var_node = var_node
         self.type_node = type_node
 
-
 class Type(AST):
     def __init__(self, token):
         self.token = token
         self.value = token.value
-
 
 class Param(AST):
     def __init__(self, var_node, type_node):
         self.var_node = var_node
         self.type_node = type_node
 
-
 class ProcedureDecl(AST):
     def __init__(self, proc_name, formal_params, block_node):
         self.proc_name = proc_name
         self.formal_params = formal_params  # a list of Param nodes
         self.block_node = block_node
-
 
 class ProcedureCall(AST):
     def __init__(self, proc_name, actual_params, token):
@@ -378,15 +434,36 @@ class ProcedureCall(AST):
         # a reference to procedure declaration symbol
         self.proc_symbol = None
 
+class WriteStmt(AST):
+    def __init__(self):
+        # new_line will be used in the interpreter in order
+        # to whether print in the same line or not.
+        self.new_line = False
+        # array of expressions AST (see expr grammar)
+        self.expressions = []
+
+class Boolean(AST):
+    def __init__(self, token):
+        self.token = token
+        self.value = token.value
+
+class IfStmt(AST):
+    def __init__(self, condition):
+        self.condition = condition
+        self.consequences = [] # list of statements
+        self.alternatives = [] # list of statements
 
 class Parser:
     def __init__(self, lexer):
         self.lexer = lexer
         # set current token to the first token taken from the input
-        self.current_token = self.get_next_token()
+        self.current_token = self.lexer.get_next_token()
+        self.next_token = self.lexer.get_next_token()
 
     def get_next_token(self):
-        return self.lexer.get_next_token()
+        current_token = self.next_token
+        self.next_token = self.lexer.get_next_token()
+        return current_token
 
     def error(self, error_code, token):
         raise ParserError(
@@ -432,7 +509,7 @@ class Parser:
         """
         declarations = []
 
-        if self.current_token.type == TokenType.VAR:
+        while self.current_token.type == TokenType.VAR:
             self.eat(TokenType.VAR)
             while self.current_token.type == TokenType.ID:
                 var_decl = self.variable_declaration()
@@ -523,12 +600,16 @@ class Parser:
     def type_spec(self):
         """type_spec : INTEGER
                      | REAL
+                     | BOOLEAN
         """
         token = self.current_token
         if self.current_token.type == TokenType.INTEGER:
             self.eat(TokenType.INTEGER)
-        else:
+        elif self.current_token.type == TokenType.REAL:
             self.eat(TokenType.REAL)
+        elif self.current_token.type == TokenType.BOOLEAN:
+            self.eat(TokenType.BOOLEAN)
+
         node = Type(token)
         return node
 
@@ -566,16 +647,33 @@ class Parser:
         statement : compound_statement
                   | proccall_statement
                   | assignment_statement
+                  | write
+                  | writeln
+                  | if_statement
                   | empty
         """
         if self.current_token.type == TokenType.BEGIN:
             node = self.compound_statement()
-        elif (self.current_token.type == TokenType.ID and
-              self.lexer.current_char == '('
-        ):
+        elif self.current_token.type in (TokenType.WRITE, TokenType.WRITELN):
+            node = self.write_statement()
+
+        #>>part8->Task1
+        elif self.current_token.type == TokenType.ID and self.next_token.type == TokenType.LPAREN:
+        #>>part8->Task1
             node = self.proccall_statement()
-        elif self.current_token.type == TokenType.ID:
+        
+        #>>part8->Task2
+        elif self.current_token.type == TokenType.ID and self.next_token.type == TokenType.ASSIGN:
             node = self.assignment_statement()
+        #>>part8->Task2
+
+        #>>part8->Task3
+        elif self.current_token.type == TokenType.ID:
+            node = self.variable()
+        #>>part8->Task3
+        
+        elif self.current_token.type == TokenType.IF:
+            node = self.if_statement()        
         else:
             node = self.empty()
         return node
@@ -624,14 +722,131 @@ class Parser:
         node = Var(self.current_token)
         self.eat(TokenType.ID)
         return node
+    
+    def write_statement(self):
+        """
+        write_statement : WRITE | WRITELN (LPAREN (expr (SEMI expr)*)? RPAREN)?
+        """        
+        node = WriteStmt()
+        
+        # pretty straightforward, we just eat the right TokenType
+        # and set the new_line node's property given that case.
+        if self.current_token.type == TokenType.WRITE:
+            self.eat(TokenType.WRITE)            
+        elif self.current_token.type == TokenType.WRITELN:
+            self.eat(TokenType.WRITELN)
+            node.new_line = True
+        
+        # Create the expressions array.
+        expressions = []
+        if self.current_token.type == TokenType.LPAREN:
+            self.eat(TokenType.LPAREN)
+            # check for parenthesis because they are optional (see grammar above)            
+            while self.current_token.type != TokenType.RPAREN:
+                # parse the first expression
+                expressions.append(self.expr())
+                # keep moving through the expressions delimited by ',' (see grammar above)
+                while self.current_token.type == TokenType.COMMA:
+                    self.eat(TokenType.COMMA)
+                    expressions.append(self.expr())
+            # eat the closing parenthesis.
+            self.eat(TokenType.RPAREN)
+        
+        # fill the expressions array
+        for expression in expressions:
+            node.expressions.append(expression)
+
+        return node
+
+    def if_statement(self):
+        """if_statement : IF condition THEN statement_list ( else_statement | elsif_statement )?"""
+        self.eat(TokenType.IF)
+        # parse the condition
+        condition = self.expr()
+        self.eat(TokenType.THEN)
+        
+        # get the consequences statements
+        consequences = self.statement_list()
+
+        # alternatives `else` is empty by default.
+        alternatives = []
+        
+        if self.current_token.type == TokenType.ELSE and self.next_token.type == TokenType.IF:
+            alternatives.append(self.elsif_statement())
+        elif self.current_token.type == TokenType.ELSE:
+            alternatives.extend(self.else_statement())
+
+        node = IfStmt(condition=condition)
+        
+        # fill all consequences nodes.
+        for consequence in consequences:
+            node.consequences.append(consequence)
+
+        # fill all alternatives nodes.
+        for alternative in alternatives:
+            node.alternatives.append(alternative)
+        
+        return node
+
+    def else_statement(self):
+        """ else_statement : ELSE statement_list """
+        self.eat(TokenType.ELSE)
+        nodes = self.statement_list()
+        statements = [
+            node for node in nodes
+        ]
+        return statements
+    
+    def elsif_statement(self):
+        """ elsif_statement : ELSE if_statement """        
+        self.eat(TokenType.ELSE)
+        return self.if_statement()
 
     def empty(self):
         """An empty production"""
         return NoOp()
 
     def expr(self):
+        return self.relation()
+
+    def relation(self):
         """
-        expr : term ((PLUS | MINUS) term)*
+        relation : arithmetic_expr (rel_op arithmetic_expr)?
+        rel_op   : LESS_THAN
+                 | GREATER_THAN
+                 | EQUAL
+                 | LESS_EQUAL
+                 | GREATER_EQUAL
+                 | NOT_EQUAL
+        """          
+        node = self.arithmetic_expr()
+        if self.current_token.type in (
+            TokenType.LESS_THAN,
+            TokenType.GREATER_THAN,
+            TokenType.LESS_EQUAL,
+            TokenType.GREATER_EQUAL,
+            TokenType.EQUAL,
+            TokenType.NOT_EQUAL,
+        ):
+            token = self.current_token
+            if self.current_token.type == TokenType.LESS_THAN:
+                self.eat(TokenType.LESS_THAN)            
+            elif self.current_token.type == TokenType.GREATER_THAN:
+                self.eat(TokenType.GREATER_THAN)            
+            elif self.current_token.type == TokenType.EQUAL:
+                self.eat(TokenType.EQUAL)            
+            elif self.current_token.type == TokenType.LESS_EQUAL:
+                self.eat(TokenType.LESS_EQUAL)            
+            elif self.current_token.type == TokenType.GREATER_EQUAL:
+                self.eat(TokenType.GREATER_EQUAL)            
+            elif self.current_token.type == TokenType.NOT_EQUAL:
+                self.eat(TokenType.NOT_EQUAL)
+            node = BinOp(left=node, op=token, right=self.arithmetic_expr())
+        return node
+
+    def arithmetic_expr(self):
+        """
+        arithmetic_expr : term ((PLUS | MINUS) term)*
         """
         node = self.term()
 
@@ -695,6 +910,16 @@ class Parser:
             node = self.expr()
             self.eat(TokenType.RPAREN)
             return node
+        elif token.type == TokenType.STRING:
+            # Nothing new here, just eat the STRING token and return the String() AST.
+            self.eat(TokenType.STRING)
+            return String(token)
+        elif token.type in (TokenType.TRUE, TokenType.FALSE):
+            if token.type == TokenType.TRUE:
+                self.eat(TokenType.TRUE)
+            elif token.type == TokenType.FALSE:
+                self.eat(TokenType.FALSE)
+            return Boolean(token)
         else:
             node = self.variable()
             return node
@@ -800,7 +1025,6 @@ class VarSymbol(Symbol):
 
     __repr__ = __str__
 
-
 class BuiltinTypeSymbol(Symbol):
     def __init__(self, name):
         super().__init__(name)
@@ -813,7 +1037,6 @@ class BuiltinTypeSymbol(Symbol):
             class_name=self.__class__.__name__,
             name=self.name,
         )
-
 
 class ProcedureSymbol(Symbol):
     def __init__(self, name, formal_params=None):
@@ -843,6 +1066,7 @@ class ScopedSymbolTable:
     def _init_builtins(self):
         self.insert(BuiltinTypeSymbol('INTEGER'))
         self.insert(BuiltinTypeSymbol('REAL'))
+        self.insert(BuiltinTypeSymbol('BOOLEAN'))
 
     def __str__(self):
         h1 = 'SCOPE (SCOPED SYMBOL TABLE)'
@@ -937,6 +1161,23 @@ class SemanticAnalyzer(NodeVisitor):
     def visit_NoOp(self, node):
         pass
 
+    def visit_IfStmt(self, node):
+        self.visit(node.condition)
+        for statement in node.consequences:
+            self.visit(statement)
+
+        for statement in node.alternatives:
+            self.visit(statement)
+
+    def visit_String(self, node):
+        # nothing to check in this AST.
+        pass
+
+    def visit_WriteStmt(self, node):
+        # check and resolve every expression
+        for expression in node.expressions:
+            self.visit(expression)
+
     def visit_BinOp(self, node):
         self.visit(node.left)
         self.visit(node.right)
@@ -1005,6 +1246,10 @@ class SemanticAnalyzer(NodeVisitor):
             self.error(error_code=ErrorCode.ID_NOT_FOUND, token=node.token)
 
     def visit_Num(self, node):
+        pass
+
+    def visit_Boolean(self, node):
+        # nothing to check
         pass
 
     def visit_UnaryOp(self, node):
@@ -1140,8 +1385,23 @@ class Interpreter(NodeVisitor):
             return self.visit(node.left) // self.visit(node.right)
         elif node.op.type == TokenType.FLOAT_DIV:
             return float(self.visit(node.left)) / float(self.visit(node.right))
+        elif node.op.type == TokenType.LESS_THAN:
+            return self.visit(node.left) < self.visit(node.right)
+        elif node.op.type == TokenType.GREATER_THAN:
+            return self.visit(node.left) > self.visit(node.right)
+        elif node.op.type == TokenType.EQUAL:
+            return self.visit(node.left) == self.visit(node.right)
+        elif node.op.type == TokenType.LESS_EQUAL:
+            return self.visit(node.left) <= self.visit(node.right)
+        elif node.op.type == TokenType.GREATER_EQUAL:
+            return self.visit(node.left) >= self.visit(node.right)
+        elif node.op.type == TokenType.NOT_EQUAL:
+            return self.visit(node.left) != self.visit(node.right)
 
     def visit_Num(self, node):
+        return node.value
+
+    def visit_Boolean(self, node):
         return node.value
 
     def visit_UnaryOp(self, node):
@@ -1172,6 +1432,35 @@ class Interpreter(NodeVisitor):
 
     def visit_NoOp(self, node):
         pass
+
+    def visit_IfStmt(self, node):
+        if self.visit(node.condition):
+            # vist each statement from the if part.
+            for statement in node.consequences:
+                self.visit(statement)
+        else:
+            # vist each statement from the else part.
+            for statement in node.alternatives:
+                self.visit(statement)
+
+    def visit_String(self, node):
+        return node.value
+
+    def visit_WriteStmt(self, node):
+        # if there's nothing to print we just print blank.
+        if len(node.expressions) > 0:
+            # iterate the expressions array
+            # get the value of every element and print it out.
+            for expression in node.expressions:
+                value = self.visit(expression)
+                print(value, end=" ")
+            if node.new_line:
+                print() # empty line
+        else:
+            # print blank like Pascal does.
+            print(" ", end=" ")
+            if node.new_line:                
+                print() # empty line
 
     def visit_ProcedureDecl(self, node):
         pass
@@ -1211,60 +1500,15 @@ class Interpreter(NodeVisitor):
             return ''
         return self.visit(tree)
 
-
 def main():
-    parser = argparse.ArgumentParser(
-        description='SPI - Simple Pascal Interpreter'
-    )
-    parser.add_argument('inputfile', help='Pascal source file')
-    parser.add_argument(
-        '--scope',
-        help='Print scope information',
-        action='store_true',
-    )
-    parser.add_argument(
-        '--stack',
-        help='Print call stack',
-        action='store_true',
-    )
-    args = parser.parse_args()
-
-    global _SHOULD_LOG_SCOPE, _SHOULD_LOG_STACK
-    _SHOULD_LOG_SCOPE, _SHOULD_LOG_STACK = args.scope, args.stack
-
-    text = open(args.inputfile, 'r').read()
-
-    lexer = Lexer(text)
-    try:
-        parser = Parser(lexer)
-        tree = parser.parse()
-    except (LexerError, ParserError) as e:
-        print(e.message)
-        sys.exit(1)
-
-    semantic_analyzer = SemanticAnalyzer()
-    try:
-        semantic_analyzer.visit(tree)
-    except SemanticError as e:
-        print(e.message)
-        sys.exit(1)
-
-    interpreter = Interpreter(tree)
-    interpreter.interpret()
-
-def main2():
     text = """
     PROGRAM Main;
       procedure Alpha;
-        {procedure Beta;
-        begin
-          WriteLn('Hola Beta dentro de Alpha')
-        end;}
       Begin
-        {Beta;}
+        WriteLn('Hello Alpha')
       End;
     BEGIN
-      Alpha;      
+      Alpha;
     END.
     """
     lexer = Lexer(text)
@@ -1281,9 +1525,12 @@ def main2():
     except SemanticError as e:
         print(e.message)
         sys.exit(1)
+    try:
+        interpreter = Interpreter(tree)
+        interpreter.interpret()
+    except RuntimeError as e:
+        print(e.message)
+        sys.exit(1)
 
-    interpreter = Interpreter(tree)
-    interpreter.interpret()
-        
 if __name__ == '__main__':
-    main2()
+    main()

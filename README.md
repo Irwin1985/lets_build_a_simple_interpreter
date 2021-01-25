@@ -1,2 +1,11 @@
-# lets_build_a_simple_interpreter
-Proof that I did all the exercises from: https://ruslanspivak.com/lsbasi-part1/
+# Siple Pascal Interpreter
+
+Hi there, my name is Irwin and I'm a passionate programmer. Specifically about the compilers and interpreters design and implementations.
+
+In this repo I'll be following the tremendous blog from https://ruslanspivak.com/lsbasi-part1/ which explains this topic magistrally, at the end of the series *(19 chapters till now)* I'll have a non basic background about interpreter design. 
+
+Actually I did all the series and the interpreter is pretty good but he is not able to talk yet thus I decided to unofficially continue the series while Ruslan prepares the next chapter.
+
+If you *(like me)* are waiting for the next chapter and feeling a little impatient then good news, you can follow the unofficial series from here: https://github.com/Irwin1985/lets_build_a_simple_interpreter/blob/main/custom/read-me-fisrt.md
+
+I hope you enjoy these chapters as well as I did 😎
