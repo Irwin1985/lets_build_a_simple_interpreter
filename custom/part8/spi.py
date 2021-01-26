@@ -7,7 +7,7 @@ from enum import Enum
 _SHOULD_LOG_SCOPE = False  # see '--scope' command line option
 _SHOULD_LOG_STACK = False  # see '--stack' command line option
 
-
+#region Exception Classes
 class ErrorCode(Enum):
     UNEXPECTED_TOKEN = 'Unexpected token'
     ID_NOT_FOUND     = 'Identifier not found'
@@ -32,14 +32,12 @@ class ParserError(Error):
 
 class SemanticError(Error):
     pass
+#endregion
 
+#region Lexer Class
 ###############################################################################
-#                                                                             #
 #  LEXER                                                                      #
-#                                                                             #
 ###############################################################################
-
-
 class TokenType(Enum):
     # single-character token types
     PLUS          = '+'
@@ -344,13 +342,9 @@ class Lexer:
         # EOF (end-of-file) token indicates that there is no more
         # input left for lexical analysis
         return Token(type=TokenType.EOF, value=None)
+#endregion
 
-
-###############################################################################
-#                                                                             #
-#  PARSER                                                                     #
-#                                                                             #
-###############################################################################
+#region AST Nodes Declaration
 class AST:
     pass
 
@@ -452,7 +446,12 @@ class IfStmt(AST):
         self.condition = condition
         self.consequences = [] # list of statements
         self.alternatives = [] # list of statements
+#endregion
 
+#region Paraser Class
+###############################################################################
+#  PARSER                                                                     #
+###############################################################################
 class Parser:
     def __init__(self, lexer):
         self.lexer = lexer
@@ -981,14 +980,12 @@ class Parser:
             )
 
         return node
+#endregion
 
-
+#region Visitor Interface
 ###############################################################################
-#                                                                             #
 #  AST visitors (walkers)                                                     #
-#                                                                             #
 ###############################################################################
-
 class NodeVisitor:
     def visit(self, node):
         method_name = 'visit_' + type(node).__name__
@@ -997,20 +994,17 @@ class NodeVisitor:
 
     def generic_visit(self, node):
         raise Exception('No visit_{} method'.format(type(node).__name__))
+#endregion
 
-
+#region Symbol Classes
 ###############################################################################
-#                                                                             #
 #  SYMBOLS, TABLES, SEMANTIC ANALYSIS                                         #
-#                                                                             #
 ###############################################################################
-
 class Symbol:
     def __init__(self, name, type=None):
         self.name = name
         self.type = type
         self.scope_level = 0
-
 
 class VarSymbol(Symbol):
     def __init__(self, name, type):
@@ -1054,8 +1048,9 @@ class ProcedureSymbol(Symbol):
         )
 
     __repr__ = __str__
+#endregion
 
-
+#region Symbol Table
 class ScopedSymbolTable:
     def __init__(self, scope_name, scope_level, enclosing_scope=None):
         self._symbols = {}
@@ -1114,8 +1109,9 @@ class ScopedSymbolTable:
         # recursively go up the chain and lookup the name
         if self.enclosing_scope is not None:
             return self.enclosing_scope.lookup(name)
+#endregion
 
-
+#region SemanticAnalyzer Class
 class SemanticAnalyzer(NodeVisitor):
     def __init__(self):
         self.current_scope = None
@@ -1262,20 +1258,12 @@ class SemanticAnalyzer(NodeVisitor):
         proc_symbol = self.current_scope.lookup(node.proc_name)
         # accessed by the interpreter when executing procedure call
         node.proc_symbol = proc_symbol
+#endregion
 
-
+#region CallStack Class
 ###############################################################################
-#                                                                             #
 #  INTERPRETER                                                                #
-#                                                                             #
 ###############################################################################
-
-
-class ARType(Enum):
-    PROGRAM   = 'PROGRAM'
-    PROCEDURE = 'PROCEDURE'
-
-
 class CallStack:
     def __init__(self):
         self._records = []
@@ -1296,7 +1284,12 @@ class CallStack:
 
     def __repr__(self):
         return self.__str__()
+#endregion
 
+#region Activation Record Class
+class ARType(Enum):
+    PROGRAM   = 'PROGRAM'
+    PROCEDURE = 'PROCEDURE'
 
 class ActivationRecord:
     def __init__(self, name, type, nesting_level):
@@ -1330,8 +1323,9 @@ class ActivationRecord:
 
     def __repr__(self):
         return self.__str__()
+#endregion
 
-
+#region Interpreter Class
 class Interpreter(NodeVisitor):
     def __init__(self, tree):
         self.tree = tree
@@ -1499,7 +1493,9 @@ class Interpreter(NodeVisitor):
         if tree is None:
             return ''
         return self.visit(tree)
+#endregion
 
+#region Main Function
 def main():
     text = """
     PROGRAM Main;
@@ -1534,3 +1530,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+#endregion
